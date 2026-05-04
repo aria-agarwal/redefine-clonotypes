@@ -653,6 +653,18 @@ self.body(func(inputs) {
 					"pl7.app/table/visibility": "optional"
 				}
 			}
+		}, {
+			column: "redefineSourceCount",
+			spec: {
+				name: "pl7.app/vdj/redefineSourceCount",
+				valueType: "Long",
+				annotations: {
+					"pl7.app/label": "Source Clonotypes",
+					"pl7.app/description": "Number of original clonotypes merged into this redefined clonotype (convergence metric)",
+					"pl7.app/min": "1",
+					"pl7.app/table/visibility": "optional"
+				}
+			}
 		}]
 
 		// Build existing sequence feature keys for CDR3 fallback logic
@@ -1002,6 +1014,13 @@ self.body(func(inputs) {
 			}
 		}
 		aggregatedDf := df_properties.groupBy("newClonotypeKey").agg(aggExpressions...)
+
+		// Convergence metric: how many distinct original clonotypes were merged into each new key.
+		// Computed from dfWithNewKeyStr (post numbering-filter) so totals match nClonotypesAfter.
+		sourceCountDf := dfWithNewKeyStr.
+			groupBy("newClonotypeKey").
+			agg(pt.col("clonotypeKey").nUnique().alias("redefineSourceCount"))
+		aggregatedDf = aggregatedDf.join(sourceCountDf, {on: "newClonotypeKey", how: "left"})
 
 		// label clonotype key deterministically on unique keys
 		aggregatedDf = addClonotypeLabelColumnsPt(aggregatedDf, "newClonotypeKey", "clonotypeLabel")

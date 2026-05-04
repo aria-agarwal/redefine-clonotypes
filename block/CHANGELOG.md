@@ -1,5 +1,16 @@
 # @platforma-open/milaboratories.redefine-clonotypes
 
+## 1.6.0
+
+### Minor Changes
+
+- 95a8ca3: Add `pl7.app/vdj/redefineSourceCount` export column: per redefined clonotype, the number of distinct original clonotypes that were merged into it. Usable as a convergence metric in downstream blocks.
+
+### Patch Changes
+
+- Updated dependencies [95a8ca3]
+  - @platforma-open/milaboratories.redefine-clonotypes.workflow@1.11.0
+
 ## 1.5.0
 
 ### Minor Changes

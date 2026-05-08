@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.redefine-clonotypes.workflow
 
+## 1.11.1
+
+### Patch Changes
+
+- 47a1b0c: Make axis label visible by default
+
 ## 1.11.0
 
 ### Minor Changes

@@ -650,7 +650,7 @@ self.body(func(inputs) {
 				annotations: {
 					"pl7.app/label": "Clone Id",
 					"pl7.app/table/orderPriority": "100000",
-					"pl7.app/table/visibility": "optional"
+					"pl7.app/table/visibility": "default"
 				}
 			}
 		}, {

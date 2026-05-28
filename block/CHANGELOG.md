@@ -1,5 +1,14 @@
 # @platforma-open/milaboratories.redefine-clonotypes
 
+## 1.6.2
+
+### Patch Changes
+
+- 553d77d: Input data label renaming
+- Updated dependencies [553d77d]
+  - @platforma-open/milaboratories.redefine-clonotypes.workflow@1.11.2
+  - @platforma-open/milaboratories.redefine-clonotypes.ui@1.8.1
+
 ## 1.6.1
 
 ### Patch Changes

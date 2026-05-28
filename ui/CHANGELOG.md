@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.redefine-clonotypes.ui
 
+## 1.8.1
+
+### Patch Changes
+
+- 553d77d: Input data label renaming
+
 ## 1.8.0
 
 ### Minor Changes

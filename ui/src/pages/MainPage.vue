@@ -132,7 +132,7 @@ function numberingWarningForChain(ns: { total: number; numbered: number } | unde
     <!-- Input selection: MiXCR run → chains → definition columns -->
     <PlDropdownRef
       v-model="app.model.args.inputRef"
-      label="MiXCR Run"
+      label="VDJ dataset"
       :options="app.model.outputs.inputOptions"
       @update:model-value="setMixcrRun"
     />

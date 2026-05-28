@@ -57,8 +57,8 @@ self.body(func(inputs) {
         arg("--ncpu").argWithVar("{system.cpu}").
         arg("-o").arg("anarci.csv").arg("--csv").
         addFile("input.fasta", fastaCmd.getFile("input.fasta")).
-        writeFile("anarci.csv_H.csv", "Id\n").
-        writeFile("anarci.csv_KL.csv", "Id\n")
+        writeFile("anarci.csv_H.csv", "Id\n", { writable: true }).
+        writeFile("anarci.csv_KL.csv", "Id\n", { writable: true })
     if isSingleCell {
         anarciBuilder = anarciBuilder.saveFile("anarci.csv_H.csv").saveFile("anarci.csv_KL.csv")
     } else {

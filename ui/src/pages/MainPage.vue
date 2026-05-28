@@ -52,7 +52,7 @@ watch(chainOptionsKey, () => {
   }
 }, { immediate: true });
 
-// Clear dependent args when the user switches to a different MiXCR run
+// Clear dependent args when the user switches to a different VDJ dataset
 function setMixcrRun(newRef: PlRef | undefined) {
   app.model.args.inputRef = newRef;
   app.model.args.selectedChainRefs = [];
@@ -129,10 +129,10 @@ function numberingWarningForChain(ns: { total: number; numbered: number } | unde
     :subtitle-placeholder="app.model.args.defaultBlockLabel"
     title="Redefine Clonotypes"
   >
-    <!-- Input selection: MiXCR run → chains → definition columns -->
+    <!-- Input selection: VDJ dataset → chains → definition columns -->
     <PlDropdownRef
       v-model="app.model.args.inputRef"
-      label="MiXCR Run"
+      label="VDJ dataset"
       :options="app.model.outputs.inputOptions"
       @update:model-value="setMixcrRun"
     />
@@ -199,7 +199,7 @@ function numberingWarningForChain(ns: { total: number; numbered: number } | unde
 
     <!-- Validation message when inputs are incomplete -->
     <PlAlert v-if="!isValid" type="info">
-      Please select a MiXCR run, chains, and a new clonotype definition.
+      Please select a VDJ dataset, chains, and a new clonotype definition.
     </PlAlert>
 
     <!-- Results section: shown only when not running and results match the current selection -->

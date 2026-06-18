@@ -1,39 +1,43 @@
-import strings from '@milaboratories/strings';
-import type { InferOutputsType, PlRef, SUniversalPColumnId } from '@platforma-sdk/model';
-import { BlockModel } from '@platforma-sdk/model';
-import { getDefaultBlockLabel } from './label';
+import strings from "@milaboratories/strings";
+import type { InferOutputsType, PlRef, SUniversalPColumnId } from "@platforma-sdk/model";
+import { BlockModel } from "@platforma-sdk/model";
+import { getDefaultBlockLabel } from "./label";
 
 /** Parses the numbering_stats.tsv produced by the anarci-numbering software.
  *  Returns how many clonotypes existed vs how many ANARCI could number,
  *  plus sample AA sequences from unnumbered clonotypes for debugging. */
-function parseNumberingStats(tsv: string | undefined): {
-  total: number;
-  numbered: number;
-  unnumberedSamples: string[];
-} | undefined {
+function parseNumberingStats(tsv: string | undefined):
+  | {
+      total: number;
+      numbered: number;
+      unnumberedSamples: string[];
+    }
+  | undefined {
   if (!tsv) return undefined;
 
   // TSV has exactly 2 lines: header + one data row
-  const lines = tsv.trim().split('\n');
+  const lines = tsv.trim().split("\n");
   if (lines.length !== 2) return undefined;
-  const headers = lines[0].split('\t');
-  const values = lines[1].split('\t');
+  const headers = lines[0].split("\t");
+  const values = lines[1].split("\t");
 
-  const totalIdx = headers.indexOf('totalClonotypes');
+  const totalIdx = headers.indexOf("totalClonotypes");
   if (totalIdx === -1) return undefined;
   const total = parseInt(values[totalIdx], 10);
   if (Number.isNaN(total)) return undefined;
 
   // ANARCI reports H and KL chains separately; take the relevant one
-  const hIdx = headers.indexOf('numberedH');
-  const klIdx = headers.indexOf('numberedKL');
-  const numberedH = hIdx !== -1 ? (parseInt(values[hIdx], 10) || 0) : 0;
-  const numberedKL = klIdx !== -1 ? (parseInt(values[klIdx], 10) || 0) : 0;
+  const hIdx = headers.indexOf("numberedH");
+  const klIdx = headers.indexOf("numberedKL");
+  const numberedH = hIdx !== -1 ? parseInt(values[hIdx], 10) || 0 : 0;
+  const numberedKL = klIdx !== -1 ? parseInt(values[klIdx], 10) || 0 : 0;
 
   // Sample AA sequences from clonotypes ANARCI could not number (format: "key|chain|sequence")
-  const samplesIdx = headers.indexOf('unnumberedSamples');
-  const samplesRaw = samplesIdx !== -1 ? (values[samplesIdx] ?? '') : '';
-  const unnumberedSamples = samplesRaw ? samplesRaw.split(';').filter((s) => s !== '' && s !== '""') : [];
+  const samplesIdx = headers.indexOf("unnumberedSamples");
+  const samplesRaw = samplesIdx !== -1 ? (values[samplesIdx] ?? "") : "";
+  const unnumberedSamples = samplesRaw
+    ? samplesRaw.split(";").filter((s) => s !== "" && s !== '""')
+    : [];
 
   return { total, numbered: Math.max(numberedH, numberedKL), unnumberedSamples };
 }
@@ -44,7 +48,7 @@ export type BlockArgs = {
   inputRef?: PlRef;
   selectedChainRefs: PlRef[];
   clonotypeDefinition: SUniversalPColumnId[];
-  numberingScheme?: 'imgt' | 'kabat' | 'chothia';
+  numberingScheme?: "imgt" | "kabat" | "chothia";
   mem?: number;
   cpu?: number;
 };
@@ -53,67 +57,77 @@ export const model = BlockModel.create()
 
   .withArgs<BlockArgs>({
     defaultBlockLabel: getDefaultBlockLabel({ clonotypeDefinitionLabels: [] }),
-    customBlockLabel: '',
+    customBlockLabel: "",
     selectedChainRefs: [],
     clonotypeDefinition: [],
   })
 
-  .argsValid((ctx) => ctx.args.inputRef !== undefined && ctx.args.selectedChainRefs.length > 0 && (ctx.args.clonotypeDefinition?.length ?? 0) > 0)
+  .argsValid(
+    (ctx) =>
+      ctx.args.inputRef !== undefined &&
+      ctx.args.selectedChainRefs.length > 0 &&
+      (ctx.args.clonotypeDefinition?.length ?? 0) > 0,
+  )
 
-  .output('inputOptions', (ctx) => {
+  .output("inputOptions", (ctx) => {
     // Discover clonotyping runs by finding anchor columns with clonotypingRunId.
-    const options = ctx.resultPool.getOptions([
-      {
-        axes: [{ name: 'pl7.app/sampleId' }, { name: 'pl7.app/vdj/clonotypeKey' }],
-        annotations: { 'pl7.app/isAnchor': 'true' },
-      },
-      {
-        axes: [{ name: 'pl7.app/sampleId' }, { name: 'pl7.app/vdj/scClonotypeKey' }],
-        annotations: { 'pl7.app/isAnchor': 'true' },
-      },
-    ], {
-      label: {
-        includeNativeLabel: false,
-        forceTraceElements: [
-          'milaboratories.samples-and-data/dataset',
+    const options =
+      ctx.resultPool.getOptions(
+        [
+          {
+            axes: [{ name: "pl7.app/sampleId" }, { name: "pl7.app/vdj/clonotypeKey" }],
+            annotations: { "pl7.app/isAnchor": "true" },
+          },
+          {
+            axes: [{ name: "pl7.app/sampleId" }, { name: "pl7.app/vdj/scClonotypeKey" }],
+            annotations: { "pl7.app/isAnchor": "true" },
+          },
         ],
-      },
-    }) ?? [];
+        {
+          label: {
+            includeNativeLabel: false,
+            forceTraceElements: ["milaboratories.samples-and-data/dataset"],
+          },
+        },
+      ) ?? [];
 
     // Strip chain/receptor suffix from labels — chain selection is handled by a separate dropdown.
     // Bulk exports: "IG Heavy", "IG Light", etc. Single-cell exports: "IG", "TCRAB", "TCRGD".
-    const chainSuffix = / \/ (?:IG Heavy|IG Light|TCR Alpha|TCR Beta|TCR Gamma|TCR Delta|IG|TCRAB|TCRGD)$/;
+    const chainSuffix =
+      / \/ (?:IG Heavy|IG Light|TCR Alpha|TCR Beta|TCR Gamma|TCR Delta|IG|TCRAB|TCRGD)$/;
 
     // Block trace types whose label can disambiguate runs from the same dataset
     const blockTraceTypes = new Set([
-      'milaboratories.mixcr-clonotyping',
-      'milaboratories.mixcr-amplicon-alignment',
-      'milaboratories.mixcr-scfv-clonotyping',
-      'milaboratories.importVDJ',
+      "milaboratories.mixcr-clonotyping",
+      "milaboratories.mixcr-amplicon-alignment",
+      "milaboratories.mixcr-scfv-clonotyping",
+      "milaboratories.importVDJ",
     ]);
 
     const seenRunIds = new Set<string>();
     const deduplicated = options
       .filter((opt) => {
         const spec = ctx.resultPool.getPColumnSpecByRef(opt.ref);
-        const runId = spec?.axesSpec[1]?.domain?.['pl7.app/vdj/clonotypingRunId'];
+        const runId = spec?.axesSpec[1]?.domain?.["pl7.app/vdj/clonotypingRunId"];
         if (!runId || seenRunIds.has(runId)) return false;
-        if (spec?.axesSpec[1]?.domain?.['pl7.app/redefined-by'] !== undefined) return false;
+        if (spec?.axesSpec[1]?.domain?.["pl7.app/redefined-by"] !== undefined) return false;
         seenRunIds.add(runId);
         return true;
       })
       .map((opt) => {
         // Strip chain/receptor suffix from labels
-        const label = opt.label.replace(chainSuffix, '');
+        const label = opt.label.replace(chainSuffix, "");
         // Parse block label from trace for disambiguation when needed
         const spec = ctx.resultPool.getPColumnSpecByRef(opt.ref);
-        const traceStr = spec?.annotations?.['pl7.app/trace'];
+        const traceStr = spec?.annotations?.["pl7.app/trace"];
         let blockLabel: string | undefined;
         if (traceStr) {
           try {
             const trace = JSON.parse(traceStr) as { type: string; label: string }[];
             blockLabel = trace.find((t) => blockTraceTypes.has(t.type))?.label;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
         return { ...opt, label, blockLabel };
       });
@@ -132,70 +146,77 @@ export const model = BlockModel.create()
     });
   })
 
-  .output('chainOptions', (ctx) => {
+  .output("chainOptions", (ctx) => {
     const run = ctx.args.inputRef;
     if (run === undefined) return undefined;
 
     // Extract clonotypingRunId from the selected anchor column's clonotypeKey axis
     const runSpec = ctx.resultPool.getPColumnSpecByRef(run);
     if (!runSpec) return undefined;
-    const runId = runSpec.axesSpec[1]?.domain?.['pl7.app/vdj/clonotypingRunId'];
+    const runId = runSpec.axesSpec[1]?.domain?.["pl7.app/vdj/clonotypingRunId"];
     if (!runId) return undefined;
 
     // Find all chain/isotype tables associated with this run
-    return ctx.resultPool.getOptions([{
-      axes: [
-        { name: 'pl7.app/sampleId' },
-        { name: 'pl7.app/vdj/clonotypeKey',
-          domain: { 'pl7.app/vdj/clonotypingRunId': runId },
+    return ctx.resultPool
+      .getOptions(
+        [
+          {
+            axes: [
+              { name: "pl7.app/sampleId" },
+              {
+                name: "pl7.app/vdj/clonotypeKey",
+                domain: { "pl7.app/vdj/clonotypingRunId": runId },
+              },
+            ],
+            annotations: { "pl7.app/isAnchor": "true" },
+          },
+          {
+            axes: [
+              { name: "pl7.app/sampleId" },
+              {
+                name: "pl7.app/vdj/scClonotypeKey",
+                domain: { "pl7.app/vdj/clonotypingRunId": runId },
+              },
+            ],
+            annotations: { "pl7.app/isAnchor": "true" },
+          },
+        ],
+        {
+          label: { includeNativeLabel: false },
         },
-      ],
-      annotations: { 'pl7.app/isAnchor': 'true' },
-    }, {
-      axes: [
-        { name: 'pl7.app/sampleId' },
-        { name: 'pl7.app/vdj/scClonotypeKey',
-          domain: { 'pl7.app/vdj/clonotypingRunId': runId },
-        },
-      ],
-      annotations: { 'pl7.app/isAnchor': 'true' },
-    }],
-    {
-      label: { includeNativeLabel: false },
-    })
+      )
       .filter((opt) => {
         // Exclude chains already redefined by this or another redefine-clonotypes block
         const spec = ctx.resultPool.getPColumnSpecByRef(opt.ref);
-        return spec?.axesSpec[1]?.domain?.['pl7.app/redefined-by'] === undefined;
+        return spec?.axesSpec[1]?.domain?.["pl7.app/redefined-by"] === undefined;
       })
       .map((opt) => ({ value: opt.ref, label: opt.label }));
   })
 
-  .output('clonotypeDefinitionOptions', (ctx) => {
+  .output("clonotypeDefinitionOptions", (ctx) => {
     // Use the first selected chain as reference for options
     const anchor = ctx.args.selectedChainRefs[0];
     if (anchor === undefined) return undefined;
 
-    const isSingleCell = ctx.resultPool.getPColumnSpecByRef(anchor)?.axesSpec[1].name === 'pl7.app/vdj/scClonotypeKey';
+    const isSingleCell =
+      ctx.resultPool.getPColumnSpecByRef(anchor)?.axesSpec[1].name === "pl7.app/vdj/scClonotypeKey";
 
     const sequenceDomain: Record<string, string> = {};
     if (isSingleCell) {
-      sequenceDomain['pl7.app/vdj/scClonotypeChain/index'] = 'primary';
+      sequenceDomain["pl7.app/vdj/scClonotypeChain/index"] = "primary";
     }
 
-    const options = ctx.resultPool.getCanonicalOptions({ main: anchor },
-      [
-        {
-          axes: [{ anchor: 'main', idx: 1 }],
-          name: 'pl7.app/vdj/sequence',
-          domain: sequenceDomain,
-        },
-        {
-          axes: [{ anchor: 'main', idx: 1 }],
-          name: 'pl7.app/vdj/geneHit',
-        },
-      ],
-    );
+    const options = ctx.resultPool.getCanonicalOptions({ main: anchor }, [
+      {
+        axes: [{ anchor: "main", idx: 1 }],
+        name: "pl7.app/vdj/sequence",
+        domain: sequenceDomain,
+      },
+      {
+        axes: [{ anchor: "main", idx: 1 }],
+        name: "pl7.app/vdj/geneHit",
+      },
+    ]);
 
     if (!isSingleCell || !options) return options;
 
@@ -206,120 +227,155 @@ export const model = BlockModel.create()
     return options
       .filter((opt) => {
         const id = JSON.parse(opt.value as string) as { domain?: Record<string, string> };
-        return id.domain?.['pl7.app/vdj/scClonotypeChain'] === 'A';
+        return id.domain?.["pl7.app/vdj/scClonotypeChain"] === "A";
       })
       .map((opt) => ({
         ...opt,
-        label: opt.label.replace(chainNamePattern, ''),
+        label: opt.label.replace(chainNamePattern, ""),
       }));
   })
 
-  .output('numberingAvailable', (ctx) => {
-    const anchor = ctx.args.selectedChainRefs[0];
-    if (anchor === undefined) return false;
+  .output(
+    "numberingAvailable",
+    (ctx) => {
+      const anchor = ctx.args.selectedChainRefs[0];
+      if (anchor === undefined) return false;
 
-    const anchorSpec = ctx.resultPool.getPColumnSpecByRef(anchor);
-    if (!anchorSpec) return false;
+      const anchorSpec = ctx.resultPool.getPColumnSpecByRef(anchor);
+      if (!anchorSpec) return false;
 
-    // Detect single-cell input
-    const isSingleCell = anchorSpec.axesSpec[1].name === 'pl7.app/vdj/scClonotypeKey';
+      // Detect single-cell input
+      const isSingleCell = anchorSpec.axesSpec[1].name === "pl7.app/vdj/scClonotypeKey";
 
-    const isChain = (col: { spec: { domain?: Record<string, string>; axesSpec?: { domain?: Record<string, string> }[] } },
-      scChain: string,
-      bulkChain: string) => {
-      if (isSingleCell) {
-        return col.spec.axesSpec?.[0]?.domain?.['pl7.app/vdj/receptor'] === 'IG'
-          && col.spec.domain?.['pl7.app/vdj/scClonotypeChain/index'] === 'primary'
-          && col.spec.domain?.['pl7.app/vdj/scClonotypeChain'] === scChain;
-      }
-      // @TODO: Remove spec.domain check if no block generates it (also from workflow)
-      return col.spec.domain?.['pl7.app/vdj/chain'] === bulkChain
-        || col.spec.axesSpec?.some((axis) => axis.domain?.['pl7.app/vdj/chain'] === bulkChain);
-    };
-
-    const hasRequiredChains = (columns: { spec: { domain?: Record<string, string>; axesSpec?: { domain?: Record<string, string> }[] } }[]) => {
-      const hasHeavy = columns.some((col) => isChain(col, 'A', 'IGHeavy'));
-      const hasLight = columns.some((col) => isChain(col, 'B', 'IGLight'));
-      return isSingleCell ? (hasHeavy && hasLight) : (hasHeavy || hasLight);
-    };
-
-    // Detect scFv mode: individual chain sequences are not marked as
-    // assembling features / main sequences, so filters must be relaxed.
-    const scFvCols = ctx.resultPool.getAnchoredPColumns(
-      { main: anchor },
-      [{ axes: [{ anchor: 'main', idx: 1 }], name: 'pl7.app/vdj/scFv-sequence' }],
-      { ignoreMissingDomains: true },
-    );
-    const isScFv = (scFvCols ?? []).length > 0;
-
-    // VDJRegion path: AA sequences
-    const vdjRegionAa = ctx.resultPool.getAnchoredPColumns(
-      { main: anchor },
-      [{
-        axes: [{ anchor: 'main', idx: 1 }],
-        name: 'pl7.app/vdj/sequence',
-        domain: {
-          'pl7.app/vdj/feature': 'VDJRegion',
-          'pl7.app/alphabet': 'aminoacid',
+      const isChain = (
+        col: {
+          spec: {
+            domain?: Record<string, string>;
+            axesSpec?: { domain?: Record<string, string> }[];
+          };
         },
-      }, {
-        axes: [{ anchor: 'main', idx: 1 }],
-        name: 'pl7.app/vdj/sequence',
-        domain: {
-          'pl7.app/vdj/feature': 'VDJRegionInFrame',
-          'pl7.app/alphabet': 'aminoacid',
-        },
-      }],
-      { ignoreMissingDomains: true },
-    );
+        scChain: string,
+        bulkChain: string,
+      ) => {
+        if (isSingleCell) {
+          return (
+            col.spec.axesSpec?.[0]?.domain?.["pl7.app/vdj/receptor"] === "IG" &&
+            col.spec.domain?.["pl7.app/vdj/scClonotypeChain/index"] === "primary" &&
+            col.spec.domain?.["pl7.app/vdj/scClonotypeChain"] === scChain
+          );
+        }
+        // @TODO: Remove spec.domain check if no block generates it (also from workflow)
+        return (
+          col.spec.domain?.["pl7.app/vdj/chain"] === bulkChain ||
+          col.spec.axesSpec?.some((axis) => axis.domain?.["pl7.app/vdj/chain"] === bulkChain)
+        );
+      };
 
-    // Select valid VDJRegion/VDJRegionInFrame AA columns for numbering
-    const vdjCandidates = isScFv
-      ? (vdjRegionAa ?? [])
-      : (vdjRegionAa ?? []).filter((col) =>
-          col.spec.annotations?.['pl7.app/vdj/isAssemblingFeature'] === 'true');
-    // If the selected columns cover the required chains allow numbering with ANARCI
-    if (hasRequiredChains(vdjCandidates)) return true;
+      const hasRequiredChains = (
+        columns: {
+          spec: {
+            domain?: Record<string, string>;
+            axesSpec?: { domain?: Record<string, string> }[];
+          };
+        }[],
+      ) => {
+        const hasHeavy = columns.some((col) => isChain(col, "A", "IGHeavy"));
+        const hasLight = columns.some((col) => isChain(col, "B", "IGLight"));
+        return isSingleCell ? hasHeavy && hasLight : hasHeavy || hasLight;
+      };
 
-    // CDR3 fallback: AA sequences
-    const cdr3Aa = ctx.resultPool.getAnchoredPColumns(
-      { main: anchor },
-      [{
-        axes: [{ anchor: 'main', idx: 1 }],
-        name: 'pl7.app/vdj/sequence',
-        domain: {
-          'pl7.app/vdj/feature': 'CDR3',
-          'pl7.app/alphabet': 'aminoacid',
-        },
-      }],
-      { ignoreMissingDomains: true },
-    );
+      // Detect scFv mode: individual chain sequences are not marked as
+      // assembling features / main sequences, so filters must be relaxed.
+      const scFvCols = ctx.resultPool.getAnchoredPColumns(
+        { main: anchor },
+        [{ axes: [{ anchor: "main", idx: 1 }], name: "pl7.app/vdj/scFv-sequence" }],
+        { ignoreMissingDomains: true },
+      );
+      const isScFv = (scFvCols ?? []).length > 0;
 
-    // Select valid CDR3 AA columns for numbering
-    const cdr3Candidates = isScFv
-      ? (cdr3Aa ?? [])
-      : (cdr3Aa ?? []).filter((col) =>
-          col.spec.annotations?.['pl7.app/vdj/isMainSequence'] === 'true');
-    // If the selected columns cover the required chains allow numbering with in-house script
-    return hasRequiredChains(cdr3Candidates);
-  }, { retentive: true })
+      // VDJRegion path: AA sequences
+      const vdjRegionAa = ctx.resultPool.getAnchoredPColumns(
+        { main: anchor },
+        [
+          {
+            axes: [{ anchor: "main", idx: 1 }],
+            name: "pl7.app/vdj/sequence",
+            domain: {
+              "pl7.app/vdj/feature": "VDJRegion",
+              "pl7.app/alphabet": "aminoacid",
+            },
+          },
+          {
+            axes: [{ anchor: "main", idx: 1 }],
+            name: "pl7.app/vdj/sequence",
+            domain: {
+              "pl7.app/vdj/feature": "VDJRegionInFrame",
+              "pl7.app/alphabet": "aminoacid",
+            },
+          },
+        ],
+        { ignoreMissingDomains: true },
+      );
 
-  .output('runChainLabels', (ctx) => {
-    return ctx.outputs?.resolve({ field: 'chainLabels', assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson();
+      // Select valid VDJRegion/VDJRegionInFrame AA columns for numbering
+      const vdjCandidates = isScFv
+        ? (vdjRegionAa ?? [])
+        : (vdjRegionAa ?? []).filter(
+            (col) => col.spec.annotations?.["pl7.app/vdj/isAssemblingFeature"] === "true",
+          );
+      // If the selected columns cover the required chains allow numbering with ANARCI
+      if (hasRequiredChains(vdjCandidates)) return true;
+
+      // CDR3 fallback: AA sequences
+      const cdr3Aa = ctx.resultPool.getAnchoredPColumns(
+        { main: anchor },
+        [
+          {
+            axes: [{ anchor: "main", idx: 1 }],
+            name: "pl7.app/vdj/sequence",
+            domain: {
+              "pl7.app/vdj/feature": "CDR3",
+              "pl7.app/alphabet": "aminoacid",
+            },
+          },
+        ],
+        { ignoreMissingDomains: true },
+      );
+
+      // Select valid CDR3 AA columns for numbering
+      const cdr3Candidates = isScFv
+        ? (cdr3Aa ?? [])
+        : (cdr3Aa ?? []).filter(
+            (col) => col.spec.annotations?.["pl7.app/vdj/isMainSequence"] === "true",
+          );
+      // If the selected columns cover the required chains allow numbering with in-house script
+      return hasRequiredChains(cdr3Candidates);
+    },
+    { retentive: true },
+  )
+
+  .output("runChainLabels", (ctx) => {
+    return ctx.outputs
+      ?.resolve({ field: "chainLabels", assertFieldType: "Input", allowPermanentAbsence: true })
+      ?.getDataAsJson();
   })
 
-  .output('perChainStats', (ctx) => {
-    const n = Number(ctx.outputs?.resolve({ field: 'nChains', assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson());
+  .output("perChainStats", (ctx) => {
+    const n = Number(
+      ctx.outputs
+        ?.resolve({ field: "nChains", assertFieldType: "Input", allowPermanentAbsence: true })
+        ?.getDataAsJson(),
+    );
     if (!n || !Number.isFinite(n)) return undefined;
     return Array.from({ length: n }, (_, i) => {
       const tsv = ctx.outputs?.resolve(`statsTsvContent_${i}`)?.getDataAsString();
       if (!tsv) return undefined;
-      const lines = tsv.trim().split('\n');
+      const lines = tsv.trim().split("\n");
       if (lines.length !== 2) return undefined;
-      const headers = lines[0].split('\t');
-      const values = lines[1].split('\t');
-      const beforeIndex = headers.indexOf('nClonotypesBefore');
-      const afterIndex = headers.indexOf('nClonotypesAfter');
+      const headers = lines[0].split("\t");
+      const values = lines[1].split("\t");
+      const beforeIndex = headers.indexOf("nClonotypesBefore");
+      const afterIndex = headers.indexOf("nClonotypesAfter");
       if (beforeIndex === -1 || afterIndex === -1) return undefined;
       return {
         nClonotypesBefore: parseInt(values[beforeIndex], 10),
@@ -328,43 +384,73 @@ export const model = BlockModel.create()
     });
   })
 
-  .output('perChainNumberingStats', (ctx) => {
+  .output("perChainNumberingStats", (ctx) => {
     if (!ctx.args.numberingScheme) return undefined;
-    const n = Number(ctx.outputs?.resolve({ field: 'nChains', assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson());
+    const n = Number(
+      ctx.outputs
+        ?.resolve({ field: "nChains", assertFieldType: "Input", allowPermanentAbsence: true })
+        ?.getDataAsJson(),
+    );
     if (!n || !Number.isFinite(n)) return undefined;
     return Array.from({ length: n }, (_, i) => {
-      const tsv = ctx.outputs?.resolve({ field: `numberingStatsContent_${i}`, assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsString();
+      const tsv = ctx.outputs
+        ?.resolve({
+          field: `numberingStatsContent_${i}`,
+          assertFieldType: "Input",
+          allowPermanentAbsence: true,
+        })
+        ?.getDataAsString();
       return parseNumberingStats(tsv);
     });
   })
 
-  .output('perChainAnarciLog', (ctx) => {
-    const n = Number(ctx.outputs?.resolve({ field: 'nChains', assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson());
+  .output("perChainAnarciLog", (ctx) => {
+    const n = Number(
+      ctx.outputs
+        ?.resolve({ field: "nChains", assertFieldType: "Input", allowPermanentAbsence: true })
+        ?.getDataAsJson(),
+    );
     if (!n || !Number.isFinite(n)) return undefined;
     return Array.from({ length: n }, (_, i) => {
-      return ctx.outputs?.resolve({ field: `anarciLog_${i}`, assertFieldType: 'Input', allowPermanentAbsence: true })?.getLogHandle();
+      return ctx.outputs
+        ?.resolve({
+          field: `anarciLog_${i}`,
+          assertFieldType: "Input",
+          allowPermanentAbsence: true,
+        })
+        ?.getLogHandle();
     });
   })
 
-  .output('perChainNumberingMethod', (ctx) => {
+  .output("perChainNumberingMethod", (ctx) => {
     if (!ctx.args.numberingScheme) return undefined;
-    const n = Number(ctx.outputs?.resolve({ field: 'nChains', assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson());
+    const n = Number(
+      ctx.outputs
+        ?.resolve({ field: "nChains", assertFieldType: "Input", allowPermanentAbsence: true })
+        ?.getDataAsJson(),
+    );
     if (!n || !Number.isFinite(n)) return undefined;
     return Array.from({ length: n }, (_, i) => {
-      return ctx.outputs?.resolve({ field: `numberingMethod_${i}`, assertFieldType: 'Input', allowPermanentAbsence: true })?.getDataAsJson();
+      return ctx.outputs
+        ?.resolve({
+          field: `numberingMethod_${i}`,
+          assertFieldType: "Input",
+          allowPermanentAbsence: true,
+        })
+        ?.getDataAsJson();
     });
   })
 
-  .output('isRunning', (ctx) => ctx.outputs?.getIsReadyOrError() === false)
+  .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
-  .title(() => 'Redefine Clonotypes')
+  .title(() => "Redefine Clonotypes")
 
   .subtitle((ctx) => ctx.args.customBlockLabel || ctx.args.defaultBlockLabel)
 
-  .sections((_ctx) => [{ type: 'link', href: '/', label: strings.titles.main }])
+  .sections((_ctx) => [{ type: "link", href: "/", label: strings.titles.main }])
 
   .done(2);
 
 export type BlockOutputs = InferOutputsType<typeof model>;
 
-export { getDefaultBlockLabel } from './label';
+export { getDefaultBlockLabel } from "./label";

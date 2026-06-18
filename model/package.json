@@ -3,24 +3,23 @@
   "version": "1.8.0",
   "description": "Block model",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js",
-      "sources": "./src/index.ts"
-    },
-    "./dist/*": "./dist/*"
-  },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "sources": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
   "scripts": {
     "build": "ts-builder build --target block-model && block-tools build-model",
     "watch": "ts-builder build --target block-model --watch",
-    "lint": "eslint .",
-    "type-check": "ts-builder type-check --target block-model"
+    "type-check": "ts-builder type-check --target block-model",
+    "fmt": "ts-builder format",
+    "check": "ts-builder check --target block-model"
   },
   "dependencies": {
     "@milaboratories/strings": "catalog:",
@@ -30,9 +29,10 @@
     "@milaboratories/ts-builder": "catalog:",
     "@milaboratories/ts-configs": "catalog:",
     "@platforma-sdk/block-tools": "catalog:",
-    "@platforma-sdk/eslint-config": "catalog:",
-    "eslint": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "eslint": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/node": "*",
+    "typescript": "*"
   }
 }

@@ -144,10 +144,15 @@ self.body(func(inputs) {
 	// original 16 GiB because its cost scales with column count, which varies
 	// with how many upstream blocks contribute per-clonotype columns.
 	//
+	// The main workflow keeps 8 cores. It reads TSVs rather than a p-frame, so
+	// it never decodes a parquet row group and the thread multiplier above does
+	// not apply to it; verified to complete at 32 GiB on 8 threads. Only the
+	// p-frame readers need their thread count held down.
+	//
 	// Steps that declare their own sizes (numbering, ANARCI, deanonymization)
 	// are left alone rather than overridden — see the call sites below.
 	mainWfMem := "32GiB"
-	mainWfCpu := 2
+	mainWfCpu := 8
 	exportMem := "24GiB"
 	exportCpu := 1
 	importMem := "8GiB"

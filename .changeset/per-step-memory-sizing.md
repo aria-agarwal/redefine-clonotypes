@@ -12,6 +12,8 @@ Adding a single Memory / CPU setting and propagating it to every component chang
 
 The main pt workflow now gets 32 GiB and keeps its 8 cores — it reads TSVs rather than a p-frame, so it never decodes a parquet row group and the thread multiplier does not apply to it. Only the p-frame readers need their thread count held down. The property export keeps headroom above its original 16 GiB because its cost scales with the number of per-clonotype columns contributed by upstream blocks.
 
+The property export and the two imports ask for 2 cores rather than the 1 they originally had. ptabler sets its polars thread count to `max(2, cpu)`, so 1 and 2 produce the same two threads and the same memory profile; at 1 those threads simply timeshare a single granted core. Asking for 2 is memory-neutral and only removes the oversubscription.
+
 ANARCI and deanonymization go back to the sizes they declare for themselves — 16 GiB / 4 cores and 8 GiB / 2 cores. ANARCI's 4 is the value its `--ncpu` argument was chosen to match; the 8 cores it inherited from the shared setting were collateral from a change aimed at polars, which ANARCI does not use. Numbering with ANARCI will therefore run on 4 cores rather than 8. The numbering TSV builders fall back to the SDK's data-derived sizing formula.
 
 An explicit Memory / CPU override in the block settings still applies to every step, unchanged.

@@ -149,14 +149,20 @@ self.body(func(inputs) {
 	// not apply to it; verified to complete at 32 GiB on 8 threads. Only the
 	// p-frame readers need their thread count held down.
 	//
+	// The p-frame readers ask for 2 cores rather than 1. POLARS_MAX_THREADS is
+	// max(2, cpu), so 1 and 2 both yield two threads and an identical memory
+	// profile — but at cpu 1 those two threads timeshare a single granted core.
+	// Asking for 2 is therefore memory-neutral by construction and only stops
+	// the oversubscription. Going below 2 buys nothing; see MILAB-6747.
+	//
 	// Steps that declare their own sizes (numbering, ANARCI, deanonymization)
 	// are left alone rather than overridden — see the call sites below.
 	mainWfMem := "32GiB"
 	mainWfCpu := 8
 	exportMem := "24GiB"
-	exportCpu := 1
+	exportCpu := 2
 	importMem := "8GiB"
-	importCpu := 1
+	importCpu := 2
 
 	// An explicit user override still applies to every step, as before.
 	userMem := undefined

@@ -1,5 +1,11 @@
 ---
-'@platforma-open/milaboratories.redefine-clonotypes.workflow': patch
+"@platforma-open/milaboratories.redefine-clonotypes.anarci-numbering": patch
+"@platforma-open/milaboratories.redefine-clonotypes.assembling-fasta": patch
+"@platforma-open/milaboratories.redefine-clonotypes.workflow": patch
+"@platforma-open/milaboratories.redefine-clonotypes": patch
+"@platforma-open/milaboratories.redefine-clonotypes.model": patch
+"@platforma-open/milaboratories.redefine-clonotypes.test": patch
+"@platforma-open/milaboratories.redefine-clonotypes.ui": patch
 ---
 
 MILAB-6736: recompute clonotype-level abundance aggregates when clonotypes are merged

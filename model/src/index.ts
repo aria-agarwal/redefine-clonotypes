@@ -53,7 +53,7 @@ export type BlockArgs = {
   cpu?: number;
 };
 
-export const model = BlockModel.create()
+export const platforma = BlockModel.create()
 
   .withArgs<BlockArgs>({
     defaultBlockLabel: getDefaultBlockLabel({ clonotypeDefinitionLabels: [] }),
@@ -451,6 +451,6 @@ export const model = BlockModel.create()
 
   .done(2);
 
-export type BlockOutputs = InferOutputsType<typeof model>;
+export type BlockOutputs = InferOutputsType<typeof platforma>;
 
 export { getDefaultBlockLabel } from "./label";

@@ -1023,22 +1023,21 @@ self.body(func(inputs) {
 			}
 		}
 
-		castableValueTypes := ["Int", "Long", "Float", "Double"]
-
 		// Re-aggregation expression for a clonotype-level abundance property, or
 		// undefined when no per-sample abundance column carries the same unit.
+		//
+		// No cast is applied to the aggregated value. An aggregate expression exposes
+		// only alias/over (pt.expression.lib.tengo, _newWindowExpression), so .cast()
+		// after .sum() does not exist; casting the input column instead would truncate
+		// per sample rather than once at the end. The sources are integer counts and
+		// the TSV is text, so xsv.importFile parses each value per the declared
+		// valueType of the spec it is imported against.
 		aggregateAbundanceProperty := func(col, h) {
 			unit := col.spec.annotations["pl7.app/abundance/unit"]
-			castTo := undefined
-			if slices.hasElement(castableValueTypes, col.spec.valueType) {
-				castTo = col.spec.valueType
-			}
 
 			// Number of samples the merged clonotype appears in.
 			if unit == "samples" {
-				expr := pt.col("sampleId").nUnique()
-				if castTo != undefined { expr = expr.cast(castTo) }
-				return expr.alias(h)
+				return pt.col("sampleId").nUnique().alias(h)
 			}
 
 			abundanceHeader := abundanceHeaderByUnit[unit]
@@ -1050,9 +1049,7 @@ self.body(func(inputs) {
 			}
 
 			// Sum over samples of the merged clonotype's abundance.
-			expr := pt.col(abundanceHeader).sum()
-			if castTo != undefined { expr = expr.cast(castTo) }
-			return expr.alias(h)
+			return pt.col(abundanceHeader).sum().alias(h)
 		}
 
 		// Build aggregation expressions: for each property column, pick the value

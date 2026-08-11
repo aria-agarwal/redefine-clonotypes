@@ -1002,13 +1002,77 @@ self.body(func(inputs) {
 			}
 		}
 
+		// --- Clonotype-level abundance aggregates ---
+		// Property columns marked pl7.app/isAbundance are themselves aggregates over
+		// samples (Supporting Reads, Number of Samples, Mean Fraction of Reads, ...).
+		// Taking them from the representative source clonotype would report a single
+		// member's value for a merged clonotype, so they are recomputed from this
+		// block's own per-sample abundances instead.
+		//
+		// This relies on df_properties holding exactly one row per
+		// (sampleId, newClonotypeKey): guaranteed by the df_abundances groupBy, and
+		// preserved by the property / numbering / cdr3 joins because each of those
+		// frames is keyed on clonotypeKey alone. A join that fans rows out would
+		// silently inflate the sums below.
+		abundanceHeaderByUnit := {}
+		for i, col in abundanceCols {
+			unit := col.spec.annotations["pl7.app/abundance/unit"]
+			if is_undefined(unit) || unit == "" { continue }
+			if is_undefined(abundanceHeaderByUnit[unit]) {
+				abundanceHeaderByUnit[unit] = "abundance_" + i
+			}
+		}
+
+		// Re-aggregation expression for a clonotype-level abundance property, or
+		// undefined when no per-sample abundance column carries the same unit.
+		//
+		// No cast is applied to the aggregated value. An aggregate expression exposes
+		// only alias/over (pt.expression.lib.tengo, _newWindowExpression), so .cast()
+		// after .sum() does not exist; casting the input column instead would truncate
+		// per sample rather than once at the end. The sources are integer counts and
+		// the TSV is text, so xsv.importFile parses each value per the declared
+		// valueType of the spec it is imported against.
+		aggregateAbundanceProperty := func(col, h) {
+			unit := col.spec.annotations["pl7.app/abundance/unit"]
+
+			// Number of samples the merged clonotype appears in.
+			if unit == "samples" {
+				return pt.col("sampleId").nUnique().alias(h)
+			}
+
+			abundanceHeader := abundanceHeaderByUnit[unit]
+			if is_undefined(abundanceHeader) { return undefined }
+
+			// Mean over the samples where the merged clonotype is present.
+			if col.spec.annotations["pl7.app/abundance/normalized"] == "true" {
+				return pt.col("normalized_" + abundanceHeader).mean().alias(h)
+			}
+
+			// Sum over samples of the merged clonotype's abundance.
+			return pt.col(abundanceHeader).sum().alias(h)
+		}
+
 		// Build aggregation expressions: for each property column, pick the value
-		// from the most-abundant representative. When numbering is enabled, use
+		// from the most-abundant representative. Clonotype-level abundance
+		// aggregates are recomputed instead. When numbering is enabled, use
 		// the numbered version of sequence/annotation columns instead.
 		aggExpressions := []
 		for h, _ in propertyHeaders {
 			col := propertyHeaders[h]
 			useNumbered := false
+
+			// Abundance aggregates → recompute from this block's own abundances
+			if col.spec.annotations["pl7.app/isAbundance"] == "true" {
+				abundanceAggExpr := aggregateAbundanceProperty(col, h)
+				if abundanceAggExpr != undefined {
+					aggExpressions = append(aggExpressions, abundanceAggExpr)
+					continue
+				}
+				unit := col.spec.annotations["pl7.app/abundance/unit"]
+				if is_undefined(unit) { unit = "" }
+				ll.print("redefine-clonotypes: property " + col.spec.name + " is marked as abundance with unit '" +
+					unit + "', but no per-sample abundance column carries that unit; keeping representative value")
+			}
 			// CDR annotation columns → use ANARCI-derived annotations if available
 			if numberingDf != undefined && hasCdrAnnotationColumns && col.spec.name == "pl7.app/vdj/sequence/annotation" {
 				if col.spec.domain["pl7.app/sequence/annotation/type"] == "CDRs" {

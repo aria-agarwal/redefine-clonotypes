@@ -7,7 +7,7 @@ import { blockSpec as samplesAndDataBlockSpec } from "@platforma-open/milaborato
 import type { BlockArgs as SamplesAndDataBlockArgs } from "@platforma-open/milaboratories.samples-and-data.model";
 import { wrapOutputs } from "@platforma-sdk/model";
 import { awaitStableState, blockTest } from "@platforma-sdk/test";
-import { blockSpec as redefineBlockSpec } from "this-block";
+import { RedefineClonotypesBlockPointer as redefineBlockSpec } from "this-block";
 
 /**
  * Sets up a project with Samples & Data + MiXCR Clonotyping using bulk VDJ data.

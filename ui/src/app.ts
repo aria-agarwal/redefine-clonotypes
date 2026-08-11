@@ -1,12 +1,12 @@
 import {
   getDefaultBlockLabel,
-  model,
+  platforma,
 } from "@platforma-open/milaboratories.redefine-clonotypes.model";
 import { defineApp } from "@platforma-sdk/ui-vue";
 import { watchEffect } from "vue";
 import MainPage from "./pages/MainPage.vue";
 
-export const sdkPlugin = defineApp(model, (app) => {
+export const sdkPlugin = defineApp(platforma, (app) => {
   app.model.args.customBlockLabel ??= "";
 
   syncDefaultBlockLabel(app.model);

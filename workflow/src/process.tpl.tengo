@@ -104,18 +104,21 @@ resolveChain := func(col, isSingleCell) {
 		chain = receptorMap[scChain]
 	} else {
 		// Bulk imports may place chain on either axis domain or column domain.
-		// Simple-paired imports use pl7.app/vdj/pairedRole instead.
-		axisChain := col.spec.axesSpec[0].domain["pl7.app/vdj/chain"]
-		domainChain := col.spec.domain["pl7.app/vdj/chain"]
+		// Simple-paired imports use pl7.app/vdj/pairedRole — check it first since
+		// the axis chain is "Paired" and would not map to a recognised chain key.
 		pairedRole := col.spec.domain["pl7.app/vdj/pairedRole"]
-		if axisChain != undefined {
-			chain = axisChain
-		} else if domainChain != undefined {
-			chain = domainChain
-		} else if pairedRole == "heavy" {
+		if pairedRole == "heavy" {
 			chain = "IGHeavy"
 		} else if pairedRole == "light" {
 			chain = "IGLight"
+		} else {
+			axisChain := col.spec.axesSpec[0].domain["pl7.app/vdj/chain"]
+			domainChain := col.spec.domain["pl7.app/vdj/chain"]
+			if axisChain != undefined {
+				chain = axisChain
+			} else {
+				chain = domainChain
+			}
 		}
 	}
 	if chain == undefined { return undefined }
@@ -292,8 +295,9 @@ self.body(func(inputs) {
 			hasH := !is_undefined(aaByChain["H"])
 			hasKL := !is_undefined(aaByChain["KL"])
 
-			// In scFv mode, scan properties for individual chain sequences
-			if isScFv && (!hasH || !hasKL) {
+			// Scan properties for chain sequences when not found via bundle
+			// (covers scFv and importers like simple-paired whose columns are in properties)
+			if !hasH || !hasKL {
 				for _, col in propertyCols {
 					if col.spec.name != "pl7.app/vdj/sequence" { continue }
 					feature := col.spec.domain["pl7.app/vdj/feature"]

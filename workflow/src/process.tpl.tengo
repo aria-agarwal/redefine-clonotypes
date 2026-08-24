@@ -775,9 +775,6 @@ self.body(func(inputs) {
 			newPropertyColumns = append(newPropertyColumns, { column: header, spec: newSpec })
 		}
 
-		// ============================================================
-		// PT WORKFLOW — data computation
-		// ============================================================
 
 		ptWf := pt.workflow()
 		ptWf.mem(mainWfMem)

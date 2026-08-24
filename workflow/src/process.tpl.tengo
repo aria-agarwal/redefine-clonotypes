@@ -95,7 +95,7 @@ resolveChain := func(col, isSingleCell) {
 	chain := undefined
 	if isSingleCell {
 		index := col.spec.domain["pl7.app/vdj/scClonotypeChain/index"]
-		if index != "primary" { return undefined }
+		if index != undefined && index != "primary" { return undefined }
 		scChain := col.spec.domain["pl7.app/vdj/scClonotypeChain"]
 		if scChain != "A" && scChain != "B" { return undefined }
 		receptor := col.spec.axesSpec[0].domain["pl7.app/vdj/receptor"]
@@ -103,7 +103,20 @@ resolveChain := func(col, isSingleCell) {
 		if receptorMap == undefined { return undefined }
 		chain = receptorMap[scChain]
 	} else {
-		chain = col.spec.axesSpec[0].domain["pl7.app/vdj/chain"]
+		// Bulk imports may place chain on either axis domain or column domain.
+		// Simple-paired imports use pl7.app/vdj/pairedRole instead.
+		axisChain := col.spec.axesSpec[0].domain["pl7.app/vdj/chain"]
+		domainChain := col.spec.domain["pl7.app/vdj/chain"]
+		pairedRole := col.spec.domain["pl7.app/vdj/pairedRole"]
+		if axisChain != undefined {
+			chain = axisChain
+		} else if domainChain != undefined {
+			chain = domainChain
+		} else if pairedRole == "heavy" {
+			chain = "IGHeavy"
+		} else if pairedRole == "light" {
+			chain = "IGLight"
+		}
 	}
 	if chain == undefined { return undefined }
 	// Map to internal key: first chain in pair → H, second → KL
@@ -256,7 +269,7 @@ self.body(func(inputs) {
 			scFvCols := columns.getColumns(anchor + "_scFvSeqs")
 			cdr3Cols := columns.getColumns(anchor + "_cdr3MainSeqs")
 
-			allowedFeatures := { "VDJRegion": true, "VDJRegionInFrame": true }
+			allowedFeatures := { "VDJRegion": true, "VDJRegionInFrame": true, "FullLength": true }
 			aaByChain := {}
 			ntByChain := {}
 			for _, col in vdjRegionCols {
@@ -285,7 +298,7 @@ self.body(func(inputs) {
 					if col.spec.name != "pl7.app/vdj/sequence" { continue }
 					feature := col.spec.domain["pl7.app/vdj/feature"]
 					if is_undefined(allowedFeatures[feature]) { continue }
-					resolved := resolveChain(col, true)
+					resolved := resolveChain(col, isSingleCell)
 					if resolved == undefined { continue }
 					chainKey := resolved.chainKey
 					alphabet := col.spec.domain["pl7.app/alphabet"]
@@ -314,6 +327,9 @@ self.body(func(inputs) {
 				}
 			}
 
+			hasCdr3H := !is_undefined(cdr3AaByChain["H"])
+			hasCdr3KL := !is_undefined(cdr3AaByChain["KL"])
+
 			if isScFv {
 				for _, col in propertyCols {
 					if col.spec.name != "pl7.app/vdj/sequence" { continue }
@@ -328,11 +344,11 @@ self.body(func(inputs) {
 						cdr3NtByChain[chainKey] = col
 					}
 				}
+				hasCdr3H = !is_undefined(cdr3AaByChain["H"])
+				hasCdr3KL = !is_undefined(cdr3AaByChain["KL"])
 			}
 
 			// Determine if VDJRegion or CDR3 sequences are available for numbering
-			hasCdr3H := !is_undefined(cdr3AaByChain["H"])
-			hasCdr3KL := !is_undefined(cdr3AaByChain["KL"])
 			useVdjRegionNumbering := hasH || hasKL
 			useCdr3Numbering = !useVdjRegionNumbering && (hasCdr3H || hasCdr3KL)
 
@@ -540,7 +556,7 @@ self.body(func(inputs) {
 
 			useNumbered := false
 			feature := col.spec.domain["pl7.app/vdj/feature"]
-			if numberingEnabled && col.spec.name == "pl7.app/vdj/sequence" && col.spec.annotations["pl7.app/vdj/isAssemblingFeature"] == "true" && (feature == "VDJRegion" || feature == "VDJRegionInFrame") {
+			if numberingEnabled && (col.spec.name == "pl7.app/vdj/sequence" || col.spec.name == "pl7.app/vdj/fullAA") && (feature == "VDJRegion" || feature == "VDJRegionInFrame" || feature == "FullLength") {
 				resolved := resolveChain(col, isSingleCell)
 				alphabet := col.spec.domain["pl7.app/alphabet"]
 				chainKey := resolved != undefined ? resolved.chainKey : undefined

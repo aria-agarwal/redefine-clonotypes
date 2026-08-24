@@ -84,6 +84,12 @@ wf.body(func(args) {
 			annotations: { "pl7.app/vdj/isAssemblingFeature": "true" }
 		}, anchor + "_vdjRegionSeqs")
 
+		// FullLength sequences from AIRR importers (name pl7.app/vdj/fullAA, feature FullLength)
+		bundleBuilder.addMulti({
+			axes: [{ anchor: anchor, idx: 1 }],
+			name: "pl7.app/vdj/fullAA"
+		}, anchor + "_vdjRegionSeqs")
+
 		// CDR3 main sequences (AA/NT)
 		bundleBuilder.addMulti({
 			axes: [{ anchor: anchor, idx: 1 }],

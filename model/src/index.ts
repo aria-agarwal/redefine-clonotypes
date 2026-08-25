@@ -321,29 +321,14 @@ export const platforma = BlockModel.create()
         { ignoreMissingDomains: true },
       );
 
-      // FullLength path: AIRR importers emit full-length sequences as pl7.app/vdj/fullAA
-      const fullLengthAa = ctx.resultPool.getAnchoredPColumns(
-        { main: anchor },
-        [
-          {
-            axes: [{ anchor: "main", idx: 1 }],
-            name: "pl7.app/vdj/fullAA",
-            domain: { "pl7.app/alphabet": "aminoacid" },
-          },
-        ],
-        { ignoreMissingDomains: true },
-      );
-
-      // Prefer explicit assembling-feature columns, but gracefully fall back to plain
-      // VDJRegion/VDJRegionInFrame AA columns when importers omit helper annotations.
-      const vdjTaggedCandidates = isScFv
+      // Select valid VDJRegion/VDJRegionInFrame AA columns for numbering
+      const vdjCandidates = isScFv
         ? (vdjRegionAa ?? [])
         : (vdjRegionAa ?? []).filter(
             (col) => col.spec.annotations?.["pl7.app/vdj/isAssemblingFeature"] === "true",
           );
-      if (hasRequiredChains(vdjTaggedCandidates)) return true;
-      if (hasRequiredChains(vdjRegionAa ?? [])) return true;
-      if (hasRequiredChains(fullLengthAa ?? [])) return true;
+      // If the selected columns cover the required chains allow numbering with ANARCI
+      if (hasRequiredChains(vdjCandidates)) return true;
 
       // CDR3 fallback: AA sequences
       const cdr3Aa = ctx.resultPool.getAnchoredPColumns(
@@ -361,14 +346,14 @@ export const platforma = BlockModel.create()
         { ignoreMissingDomains: true },
       );
 
-      // Same strategy for CDR3 fallback: prefer main-sequence tags, then accept raw CDR3 AA.
-      const cdr3TaggedCandidates = isScFv
+      // Select valid CDR3 AA columns for numbering
+      const cdr3Candidates = isScFv
         ? (cdr3Aa ?? [])
         : (cdr3Aa ?? []).filter(
             (col) => col.spec.annotations?.["pl7.app/vdj/isMainSequence"] === "true",
           );
-      if (hasRequiredChains(cdr3TaggedCandidates)) return true;
-      return hasRequiredChains(cdr3Aa ?? []);
+      // If the selected columns cover the required chains allow numbering with in-house script
+      return hasRequiredChains(cdr3Candidates);
     },
     { retentive: true },
   )

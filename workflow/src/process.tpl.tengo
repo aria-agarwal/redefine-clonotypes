@@ -775,6 +775,18 @@ self.body(func(inputs) {
 			newPropertyColumns = append(newPropertyColumns, { column: header, spec: newSpec })
 		}
 
+		// Add ANARCI-numbered region columns (FR1, CDR1, … VDJRegion, etc.) that are
+		// produced by ANARCI but don't exist as upstream property columns.
+		// For formats like simple-paired that only export full-length sequences,
+		// these individual region columns are entirely new output.
+		if numberingEnabled && len(numberingHeaders) > 0 {
+			for _, header in numberingHeaders {
+				spec := numberingSpecs[header]
+				if spec != undefined {
+					newPropertyColumns = append(newPropertyColumns, { column: header, spec: spec })
+				}
+			}
+		}
 
 		ptWf := pt.workflow()
 		ptWf.mem(mainWfMem)
@@ -1144,6 +1156,17 @@ self.body(func(inputs) {
 			if !useNumbered {
 				aggExpressions = append(aggExpressions,
 					pt.col(h).maxBy(pt.col(mainAbundanceHeader)).alias(h)
+				)
+			}
+		}
+
+		// Include all ANARCI-numbered region columns in the aggregation so they
+		// survive the groupBy step. These are joined into df_properties from
+		// numberingDf but would otherwise be dropped by the aggregation.
+		if numberingEnabled && numberingDf != undefined {
+			for _, header in numberingHeaders {
+				aggExpressions = append(aggExpressions,
+					pt.col(header).maxBy(pt.col(mainAbundanceHeader)).alias(header)
 				)
 			}
 		}

@@ -59,7 +59,7 @@ self.body(func(inputs) {
         addFile("input.fasta", fastaCmd.getFile("input.fasta")).
         writeFile("anarci.csv_H.csv", "Id\n", { writable: true }).
         writeFile("anarci.csv_KL.csv", "Id\n", { writable: true })
-    if isSingleCell {
+    if isSingleCell || bulkChain == undefined {
         anarciBuilder = anarciBuilder.saveFile("anarci.csv_H.csv").saveFile("anarci.csv_KL.csv")
     } else {
         if bulkChain == "H" {
@@ -88,7 +88,7 @@ self.body(func(inputs) {
     if cdrMappingKL != undefined && cdrMappingKL != "" {
         numberingExec = numberingExec.arg("--cdr_mapping_kl").arg(cdrMappingKL)
     }
-    if isSingleCell {
+    if isSingleCell || bulkChain == undefined {
         numberingExec = numberingExec.
             addFile("anarci.csv_H.csv", anarciBuilder.getFile("anarci.csv_H.csv")).
             arg("--h_csv").arg("anarci.csv_H.csv").

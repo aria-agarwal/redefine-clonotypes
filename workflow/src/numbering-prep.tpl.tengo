@@ -66,9 +66,17 @@ self.body(func(inputs) {
 		numberingAaTsv := numberingAaTsvBuilder.build()
 		numberingInputTsv := numberingInputTsvBuilder.build()
 
-		bulkChain := undefined
-		if !isSingleCell {
+// For simple-paired bulk datasets both H and KL live in the same row,
+	// so we must number both chains — treat them like single-cell (bulkChain = undefined).
+	// For standard bulk datasets only one chain exists per row; pick that one.
+	bulkChain := undefined
+	if !isSingleCell {
+		if hasH && hasKL {
+			// both chains present in a single row (simple-paired) → number both
+			bulkChain = undefined
+		} else {
 			bulkChain = hasH ? "H" : "KL"
+		}
 		}
 
 		numbering := render.create(numberingTpl, {
